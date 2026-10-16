@@ -19,6 +19,10 @@
 - **Extension navigateur** (Chrome/Edge) pour envoyer un lien à TurboDL d'un clic.
 - Thèmes clair et sombre (suit Windows), mise en veille bloquée pendant les téléchargements.
 
+### Nouveautés 1.7.1
+- Reprise rapide des torrents : plus de revérification complète à chaque lancement.
+- Logo KDL TECH dans l'application, couleurs renforcées, état « Vérification » clair.
+
 ### Nouveautés 1.7.0
 - Un torrent bloqué à 100 % se termine désormais tout seul.
 - Un élément retiré de la liste ne revient plus à chaque lancement (il reste dans l'historique).
@@ -50,6 +54,10 @@ python -m PyInstaller --noconfirm --onefile --windowed --name TurboDL --icon tur
 - **History** (`%LOCALAPPDATA%\TurboDL\historique.json`): unfinished downloads resume on restart.
 - **Browser extension** (Chrome/Edge) to send a link to TurboDL in one click.
 - Light and dark themes (follows Windows); sleep is blocked while downloading.
+
+### What's new in 1.7.1
+- Torrent fast resume: no full re-check on every launch.
+- KDL TECH logo in the app, stronger colours, clear "checking" state.
 
 ### What's new in 1.7.0
 - Torrents stuck at 100 % now complete on their own.

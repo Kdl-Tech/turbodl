@@ -32,7 +32,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
-VERSION = "1.7.0"
+VERSION = "1.7.1"
 UA = f"Mozilla/5.0 (Windows NT 10.0; Win64; x64) TurboDL/{VERSION}"
 CHUNK = 256 * 1024             # taille de lecture réseau
 MIN_SPLIT = 2 * 1024 * 1024    # on ne recoupe pas un segment restant < 2 Mo
@@ -620,6 +620,27 @@ def lt_session():
         return _LT["session"]
 
 
+_RESUME = {}       # empreinte -> données de reprise reçues de libtorrent
+
+
+def _ih_key(ih):
+    return str(ih.get_best())
+
+
+def _pump_alerts(ses):
+    """La session est partagée : un seul lecteur d'alertes à la fois, et les
+    données de reprise sont rangées pour le téléchargement concerné."""
+    import libtorrent as lt
+    with _LT_LOCK:
+        for a in ses.pop_alerts():
+            if isinstance(a, lt.save_resume_data_alert):
+                _RESUME[_ih_key(a.handle.info_hashes())] = lt.write_resume_data_buf(a.params)
+
+
+def _resume_path(key):
+    return os.path.join(app_dir("reprise"), key + ".fastresume")
+
+
 class TorrentJob:
     """Téléchargement BitTorrent ; même interface que Downloader
     (run / stop / snapshot) pour que l'affichage soit commun."""
@@ -689,10 +710,23 @@ class TorrentJob:
         return self.status
 
     def _run(self):
+        import libtorrent as lt
         atp = self._params()
         out = os.path.abspath(self.out_dir)
         os.makedirs(out, exist_ok=True)
         atp.save_path = out
+        key = _ih_key(atp.info_hashes)
+        rpath = _resume_path(key)
+        try:                                     # reprise rapide : pas de revérification
+            with open(rpath, "rb") as fh:
+                saved = lt.read_resume_data(fh.read())
+            saved.save_path = out
+            if saved.ti is not None or atp.ti is None:
+                saved.trackers = list(saved.trackers) + [t for t in atp.trackers
+                                                         if t not in saved.trackers]
+                atp = saved
+        except (OSError, RuntimeError):
+            pass
         ses = lt_session()
         if not self.extra_peers:                 # trackers publics : plus de pairs
             atp.trackers = list(atp.trackers) + [t for t in EXTRA_TRACKERS
@@ -702,9 +736,31 @@ class TorrentJob:
             h.connect_peer(peer)
         space_checked = False
         full_since = None                # 100 % atteint mais libtorrent pas encore « fini »
+        last_resume = time.monotonic()
+
+        def write_resume(data):
+            with open(rpath + ".tmp", "wb") as fh:
+                fh.write(data)
+            os.replace(rpath + ".tmp", rpath)
+
+        def save_resume(wait):
+            st = h.status()
+            if not st.has_metadata or str(st.state).rsplit(".", 1)[-1].startswith("checking"):
+                return
+            h.save_resume_data(lt.torrent_handle.save_info_dict)
+            if not wait:
+                return
+            end = time.monotonic() + 10
+            while time.monotonic() < end:
+                _pump_alerts(ses)
+                data = _RESUME.pop(key, None)
+                if data:
+                    write_resume(data)
+                    return
+                time.sleep(0.1)
         try:
             while not self.stop_evt.is_set():
-                ses.pop_alerts()
+                _pump_alerts(ses)
                 st = h.status()
                 if st.errc.value():
                     raise IOError(st.errc.message())
@@ -730,10 +786,25 @@ class TorrentJob:
                         full_since and time.monotonic() - full_since > 10)):
                     self.final_path = os.path.join(out, st.name)
                     self.status = "done"     # pas de partage après la fin
+                    try:
+                        os.remove(rpath)
+                    except OSError:
+                        pass
                     return
+                if time.monotonic() - last_resume > 120:
+                    last_resume = time.monotonic()
+                    save_resume(False)       # sinon écrit au tour suivant, à réception
+                data = _RESUME.pop(key, None)
+                if data:
+                    write_resume(data)
                 self.stop_evt.wait(0.5)
-            self.status = "paused"           # relancer = revérifie puis reprend
+            self.status = "paused"           # relancer = reprise immédiate
         finally:
+            if self.status != "done":
+                try:
+                    save_resume(True)
+                except Exception:  # noqa: BLE001 — au pire, revérification au prochain lancement
+                    pass
             ses.remove_torrent(h)            # les fichiers restent sur le disque
 
     def snapshot(self):
@@ -1339,10 +1410,16 @@ def gui(initial=None):
     sbx.pack(fill="both", expand=True)
     brand = tk.Frame(sbx, bg=SIDE)
     brand.pack(fill="x", padx=8, pady=(0, 24))
-    logo = tk.Canvas(brand, width=32, height=32, bg=SIDE, highlightthickness=0)
-    logo.pack(side="left")
-    rounded(logo, 0.5, 0.5, 31.5, 31.5, 9, fill=PRIMARY, outline="")
-    draw_icon(logo, "bolt", 18, P["on_primary"], 7, 7)
+    try:                                        # logo officiel KDL TECH, tel quel
+        brand.logo_img = tk.PhotoImage(file=resource("logo-kdl.png"))
+        lw, lh = brand.logo_img.width(), brand.logo_img.height()
+        logo = tk.Canvas(brand, width=lw + 12, height=lh + 8, bg=SIDE, highlightthickness=0)
+        logo.pack(side="left")
+        if P["dark"]:                           # fond sombre : pastille claire, logo intact
+            rounded(logo, 0.5, 0.5, lw + 11.5, lh + 7.5, 9, fill="#ffffff", outline="")
+        logo.create_image(6, 4, image=brand.logo_img, anchor="nw")
+    except tk.TclError:
+        pass
     label(brand, "TurboDL", 15, FG, "bold", DISPLAY).pack(side="left", padx=(10, 0))
 
     navs = {}
@@ -1685,8 +1762,10 @@ def gui(initial=None):
                          "segments": [], "pieces": [], "status": state, "error": None,
                          "path": None, "filename": job.get("name")}
             self.box, card = rounded_box(inner, SURF, LINE, 12, 4)
+            self.stripe = tk.Frame(card, width=4, bg=ACC)
+            self.stripe.pack(side="left", fill="y", padx=(2, 0), pady=8)
             g = tk.Frame(card, bg=SURF, padx=12, pady=10)
-            g.pack(fill="x")
+            g.pack(side="left", fill="both", expand=True)
             g.columnconfigure(1, weight=1)
             g.columnconfigure(2, minsize=128)
             self.tile = tk.Canvas(g, width=40, height=40, bg=SURF, highlightthickness=0)
@@ -1802,6 +1881,16 @@ def gui(initial=None):
                     self.done_at = time.strftime("%H:%M")
                     notify(f"Terminé : {short(self.name(), 90)}", OK)
 
+        def checking(self):
+            return (self.state == "running" and self.torrent
+                    and "vérification" in (self.snap.get("phase") or ""))
+
+        def accent(self):
+            if self.checking():
+                return AMBER
+            return {"done": OK, "error": ERR, "paused": AMBER, "waiting": AMBER}.get(
+                self.state, VIOLET if self.torrent else ACC)
+
         def render(self):
             s, state = self.snap, self.state
             self.name_lbl.config(text=short(self.name(), 90))
@@ -1811,6 +1900,9 @@ def gui(initial=None):
             txt, col = STATE_TXT.get(state, (state, MUTED))
             if state == "running" and self.stopping:
                 txt = "Mise en pause…"
+            elif self.checking():
+                txt, col = "Vérification", AMBER
+            self.stripe.config(bg=self.accent())
             self.st_lbl.config(text=f"{txt} · {pct}" if pct and state in ("running", "paused")
                                else txt, fg=col)
             parts = []
@@ -1833,8 +1925,13 @@ def gui(initial=None):
             self.meta_lbl.config(text="   ".join(p for p in parts if p),
                                  fg=ERR if state == "error" else MUTED)
             if state == "running":
-                self.speed_lbl.config(text=f"{human(s['speed'])}/s", fg=FG)
-                self.left_lbl.config(text=f"reste {human_time(s.get('eta'))}")
+                if self.checking():
+                    self.speed_lbl.config(text="contrôle", fg=AMBER)
+                    self.left_lbl.config(text="des fichiers déjà là")
+                else:
+                    self.speed_lbl.config(text=f"{human(s['speed'])}/s",
+                                          fg=VIOLET if self.torrent else ACC)
+                    self.left_lbl.config(text=f"reste {human_time(s.get('eta'))}")
             else:
                 self.speed_lbl.config(text="—", fg=FAINT)
                 self.left_lbl.config(text={"paused": "en pause", "waiting": "en attente",
@@ -1852,57 +1949,62 @@ def gui(initial=None):
         def paint_tile(self):
             c = self.tile
             c.delete("all")
-            col = {"done": OK, "error": ERR, "paused": AMBER, "waiting": AMBER}.get(
-                self.state, VIOLET if self.torrent else ACC)
-            rounded(c, 0.5, 0.5, 39.5, 39.5, 10, fill=blend(col, SURF, 0.16), outline="")
+            col = self.accent()
+            rounded(c, 0.5, 0.5, 39.5, 39.5, 10, fill=blend(col, SURF, 0.30),
+                    outline=blend(col, SURF, 0.55))
             kind = "check" if self.state == "done" else ("magnet" if self.torrent else "globe")
             draw_icon(c, kind, 20, col, 10, 10)
 
         def draw(self):
             c, s = self.bar, self.snap
             c.delete("all")
-            w, h = max(c.winfo_width(), 20), 14
+            w, h = max(c.winfo_width(), 20), 16
             y, x0, x1 = h / 2, 5, w - 5
             span = x1 - x0
             size = s.get("size")
-            c.create_line(x0, y, x1, y, width=6, fill=P["track"], capstyle="round")
+            c.create_line(x0, y, x1, y, width=8, fill=P["track"], capstyle="round")
             running = self.state == "running"
             col = {"done": OK, "error": ERR, "paused": AMBER}.get(self.state, ACC if running else FAINT)
-            g = (lambda x: grad((x - x0) / span)) if running else (lambda x: col)
+            if self.checking():
+                g = lambda x: blend(ACC, AMBER, (x - x0) / span)      # noqa: E731
+            elif running:
+                g = lambda x: grad((x - x0) / span)                   # noqa: E731
+            else:
+                g = lambda x: col                                     # noqa: E731
             if self.state == "done":
-                c.create_line(x0, y, x1, y, width=6, fill=OK, capstyle="round")
+                c.create_line(x0, y, x1, y, width=8, fill=OK, capstyle="round")
             elif s.get("pieces"):
                 pieces = s["pieces"]
                 bw = span / len(pieces)
                 for i, f in enumerate(pieces):
                     if f > 0:
                         pc = g(x0 + i * bw)
-                        c.create_line(x0 + i * bw, y, x0 + (i + 1) * bw + 0.6, y, width=6,
-                                      fill=pc if f >= 1 else blend(pc, P["track"], 0.45))
+                        c.create_line(x0 + i * bw, y, x0 + (i + 1) * bw + 0.6, y, width=8,
+                                      fill=pc if f >= 1 else blend(pc, P["track"], 0.7))
             elif size and s.get("segments"):
                 for start, end, pos, active in s["segments"]:
                     a, b = x0 + start / size * span, x0 + pos / size * span
                     xs = a
                     while xs < b:                     # par tranches pour le dégradé
                         xe = min(b, xs + 8)
-                        c.create_line(xs, y, xe + 0.5, y, width=6, fill=g(xs))
+                        c.create_line(xs, y, xe + 0.5, y, width=8, fill=g(xs))
                         xs = xe
                     if active and running:
                         glow(c, b, y, g(b), SURF, 2.5)
             elif size:
                 b = x0 + min(1.0, (s.get("downloaded") or 0) / size) * span
                 if b > x0:
-                    c.create_line(x0, y, b, y, width=6, fill=g(x0), capstyle="round")
+                    c.create_line(x0, y, b, y, width=8, fill=g(x0), capstyle="round")
                     xs = x0 + 3
                     while xs < b - 3:
                         xe = min(b - 3, xs + 8)
-                        c.create_line(xs, y, xe + 0.5, y, width=6, fill=g(xs))
+                        c.create_line(xs, y, xe + 0.5, y, width=8, fill=g(xs))
                         xs = xe
                     if running:
                         glow(c, b, y, g(b), SURF)
             elif running:
                 a = (time.time() * 140) % (span + 140) - 140
-                c.create_line(max(x0, x0 + a), y, min(x1, x0 + a + 140), y, width=6, fill=ACC,
+                c.create_line(max(x0, x0 + a), y, min(x1, x0 + a + 140), y, width=8, fill=ACC,
                               capstyle="round")
 
     # ----------------------------------------------------------- filtres, tri, liste
