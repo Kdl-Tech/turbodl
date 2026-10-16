@@ -1,0 +1,12 @@
+{
+  "manifest_version": 3,
+  "name": "TurboDL",
+  "version": "1.3.0",
+  "description": "Envoie vos téléchargements à TurboDL (multi-connexions, torrents, reprise auto).",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAwYOYoTcv5WJ/iVIsIXHhewJXA9C8QvbWrsPZSBep2nfpE2opgt4ibBBIJo3VsC2uF2maippUXMcuEBOBnwpjsUfSxfiJW7/SXEN2bUPvtgDfiEaILRuMCNWSWv8YLH/9+JlEekHyogpGQIx6E1AZUAF3k2Wmf1Pe3qa3EEhF8wdUN6Xh3l7isr7YRqxlYggIs5euLEAavDoMagYfyuJQN3aX2AS2BzH57Yr8qIm1WSt4YFTzQaNtk6NiTrRT5vKat3T9yBXvHCgEHvWNIt/1UoVtm2bgCyfNZDvCcVF8AgIqiIUDa14IeWFuq0RSkR20QXi/kXgkwkXGtCGQ0cEvIQIDAQAB",
+  "permissions": ["downloads", "cookies", "storage", "contextMenus"],
+  "host_permissions": ["<all_urls>"],
+  "background": { "service_worker": "background.js" },
+  "action": { "default_popup": "popup.html", "default_title": "TurboDL" },
+  "icons": { "16": "icon16.png", "32": "icon32.png", "48": "icon48.png", "128": "icon128.png" }
+}

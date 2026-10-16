@@ -1,0 +1,263 @@
+<!doctype html>
+<html lang="fr" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TurboDL — maquette</title>
+<style>
+  /* Palette provisoire KDL : bleu dominant, un seul accent cyan, neutres ardoise / ivoire */
+  :root[data-theme="dark"] {
+    --bg:#0b1018; --side:#0e141e; --surf:#131a26; --surf2:#1a2332; --line:#222d3f; --hover:#1f2938;
+    --text:#e8edf4; --muted:#8f9bb0; --faint:#5a6578; --primary:#3d6ff2; --primary-hi:#5784f7;
+    --accent:#2dd4ef; --ok:#3ecf8e; --err:#f2706b; --track:#0a0f17; --shadow:0 1px 0 rgba(0,0,0,.35);
+  }
+  :root[data-theme="light"] {
+    --bg:#f5f3ee; --side:#efece5; --surf:#fffdf9; --surf2:#f1ede6; --line:#e1dbcf; --hover:#ebe6dc;
+    --text:#17202c; --muted:#545f70; --faint:#8a93a1; --primary:#2456e3; --primary-hi:#3a69ee;
+    --accent:#0b8fae; --ok:#1d9461; --err:#c9443d; --track:#e9e4da; --shadow:0 1px 0 rgba(30,25,15,.06);
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text);
+         font:14px/1.45 "Segoe UI Variable Text","Segoe UI",system-ui,sans-serif;
+         font-variant-numeric:tabular-nums; }
+  .win { display:grid; grid-template-columns:216px 1fr; min-height:100vh; }
+
+  /* ---------- barre latérale ---------- */
+  aside { background:var(--side); border-right:1px solid var(--line); padding:24px 12px;
+          display:flex; flex-direction:column; gap:4px; }
+  .brand { display:flex; align-items:center; gap:10px; padding:0 8px 24px; }
+  .logo { width:32px; height:32px; border-radius:9px; background:var(--primary); display:grid; place-items:center; }
+  .brand b { font:600 17px "Segoe UI Variable Display","Segoe UI",sans-serif; letter-spacing:-.01em; }
+  .nav { display:flex; align-items:center; gap:10px; padding:8px 10px; border-radius:8px; color:var(--muted);
+         cursor:pointer; transition:background .18s ease, color .18s ease; }
+  .nav:hover { background:var(--hover); color:var(--text); }
+  .nav.on { background:var(--surf2); color:var(--text); }
+  .nav.on::before { content:""; width:3px; height:16px; border-radius:2px; background:var(--accent); margin-left:-10px; margin-right:7px; }
+  .nav .n { margin-left:auto; font-size:12px; color:var(--faint); }
+  .nav svg { width:16px; height:16px; flex:none; }
+  .sep { height:1px; background:var(--line); margin:12px 8px; }
+  .side-foot { margin-top:auto; display:flex; flex-direction:column; gap:4px; }
+  .pill { display:flex; align-items:center; gap:8px; padding:8px 10px; font-size:12px; color:var(--muted); }
+  .dot { width:8px; height:8px; border-radius:50%; background:var(--ok); flex:none; }
+
+  /* ---------- zone principale ---------- */
+  main { padding:24px 32px 32px; display:flex; flex-direction:column; gap:24px; min-width:0; }
+
+  .cmd { display:flex; gap:8px; }
+  .field { flex:1; display:flex; align-items:center; gap:10px; background:var(--surf); border:1px solid var(--line);
+           border-radius:10px; padding:0 8px 0 14px; transition:border-color .18s ease; }
+  .field:focus-within { border-color:var(--accent); }
+  .field svg { width:18px; height:18px; color:var(--faint); flex:none; }
+  .field input { flex:1; background:none; border:0; outline:0; color:var(--text); font:inherit; font-size:15px; padding:13px 0; }
+  .field input::placeholder { color:var(--faint); }
+  .btn { border:1px solid var(--line); background:var(--surf); color:var(--text); font:inherit; border-radius:10px;
+         padding:0 16px; height:46px; cursor:pointer; display:inline-flex; align-items:center; gap:8px;
+         transition:background .18s ease; }
+  .btn:hover { background:var(--hover); }
+  .btn.primary { background:var(--primary); border-color:var(--primary); color:#fff; font-weight:600; padding:0 22px; }
+  .btn.primary:hover { background:var(--primary-hi); }
+  .btn svg { width:16px; height:16px; }
+  .ibtn { width:32px; height:32px; border:0; background:none; border-radius:8px; color:var(--muted); cursor:pointer;
+          display:grid; place-items:center; transition:background .15s, color .15s; }
+  .ibtn:hover { background:var(--hover); color:var(--text); }
+  .ibtn svg { width:16px; height:16px; }
+  :focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+  .opts { display:flex; gap:8px; flex-wrap:wrap; margin-top:-12px; }
+  .chip { display:inline-flex; align-items:center; gap:6px; font-size:12px; color:var(--muted); background:var(--surf);
+          border:1px solid var(--line); border-radius:999px; padding:4px 12px; cursor:pointer; }
+  .chip b { color:var(--text); font-weight:600; }
+
+  /* ---------- cockpit (point focal) ---------- */
+  .hero { position:relative; background:var(--surf); border:1px solid var(--line); border-radius:14px; overflow:hidden;
+          height:176px; box-shadow:var(--shadow); }
+  .hero svg.graph { position:absolute; top:0; bottom:0; right:0; left:300px; width:calc(100% - 300px); height:100%; }
+  .hero .num { position:absolute; left:28px; top:24px; }
+  .cap { font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:var(--faint); font-weight:600; }
+  .big { font:700 52px/1.05 "Segoe UI Variable Display","Segoe UI",sans-serif; letter-spacing:-.03em; color:var(--accent); margin-top:6px; }
+  .big small { font-size:24px; font-weight:600; letter-spacing:0; margin-left:4px; }
+  .sub { color:var(--muted); font-size:13px; margin-top:6px; }
+  .stats { position:absolute; right:24px; top:24px; display:flex; gap:8px; }
+  .stat { background:color-mix(in srgb, var(--surf2) 88%, transparent); border:1px solid var(--line); border-radius:10px;
+          padding:8px 14px; min-width:92px; backdrop-filter:blur(4px); }
+  .stat .v { font:600 20px "Segoe UI Variable Display","Segoe UI",sans-serif; }
+  .stat .l { font-size:11px; color:var(--faint); }
+
+  /* ---------- liste ---------- */
+  .lhead { display:flex; align-items:baseline; gap:10px; }
+  .lhead h2 { margin:0; font:600 18px "Segoe UI Variable Display","Segoe UI",sans-serif; letter-spacing:-.01em; }
+  .lhead .c { color:var(--faint); }
+  .lhead .r { margin-left:auto; display:flex; gap:4px; }
+  .seg { font-size:12px; color:var(--muted); padding:4px 10px; border-radius:6px; cursor:pointer; }
+  .seg.on { background:var(--surf2); color:var(--text); }
+  .list { display:flex; flex-direction:column; gap:8px; }
+  .row { display:grid; grid-template-columns:40px 1fr 132px 108px; align-items:center; gap:16px; background:var(--surf);
+         border:1px solid var(--line); border-radius:12px; padding:14px 16px; box-shadow:var(--shadow);
+         transition:border-color .18s ease; }
+  .row:hover { border-color:color-mix(in srgb, var(--accent) 35%, var(--line)); }
+  .tile { width:40px; height:40px; border-radius:10px; background:var(--surf2); display:grid; place-items:center; color:var(--muted); }
+  .tile svg { width:20px; height:20px; }
+  .row.run .tile { color:var(--accent); }
+  .row.done .tile { color:var(--ok); }
+  .row.err .tile { color:var(--err); }
+  .name { font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .meta { font-size:12px; color:var(--muted); margin-top:2px; display:flex; gap:10px; flex-wrap:wrap; }
+  .meta .st { font-weight:600; }
+  .row.run .st { color:var(--accent); } .row.done .st { color:var(--ok); } .row.err .st { color:var(--err); }
+  .bar { position:relative; height:6px; border-radius:3px; background:var(--track); margin-top:10px; overflow:visible; }
+  .fill { position:absolute; inset:0 auto 0 0; border-radius:3px; background:var(--accent); }
+  .row.run .fill::after { content:""; position:absolute; right:-4px; top:50%; width:10px; height:10px; margin-top:-5px; border-radius:50%;
+          background:var(--accent); box-shadow:0 0 0 4px color-mix(in srgb, var(--accent) 22%, transparent), 0 0 14px var(--accent); }
+  .row.paused .fill { background:var(--faint); } .row.done .fill { background:var(--ok); } .row.err .fill { background:var(--err); }
+  .pieces { display:flex; gap:1px; height:6px; margin-top:10px; border-radius:3px; overflow:hidden; background:var(--track); }
+  .pieces i { flex:1; background:var(--accent); } .pieces i.p { background:color-mix(in srgb, var(--accent) 40%, var(--track)); } .pieces i.n { background:transparent; }
+  .speed { text-align:right; }
+  .speed .v { font:600 17px "Segoe UI Variable Display","Segoe UI",sans-serif; }
+  .speed .l { font-size:12px; color:var(--faint); }
+  .acts { display:flex; justify-content:flex-end; gap:2px; }
+  .badge { font-size:10px; font-weight:700; letter-spacing:.06em; color:var(--faint); border:1px solid var(--line); border-radius:4px; padding:0 5px; }
+
+  .note { font-size:12px; color:var(--faint); border-top:1px dashed var(--line); padding-top:16px; }
+  .theme { position:fixed; right:16px; bottom:16px; }
+  @media (prefers-reduced-motion: reduce) { * { transition:none !important; } }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute">
+  <symbol id="i-down" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v12m0 0-5-5m5 5 5-5M5 20h14"/></symbol>
+  <symbol id="i-bolt" viewBox="0 0 24 24" fill="currentColor"><path d="M13.5 2 5 13.5h6L9.5 22 19 9.5h-6.2L13.5 2Z"/></symbol>
+  <symbol id="i-list" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01"/></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24" fill="currentColor"><path d="M7 4.5v15l12.5-7.5L7 4.5Z"/></symbol>
+  <symbol id="i-pause" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7.5"/></symbol>
+  <symbol id="i-magnet" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3v8a6 6 0 0 0 12 0V3M6 7h4M14 7h4M10 3v8a2 2 0 0 0 4 0V3"/></symbol>
+  <symbol id="i-globe" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c2.5 2.6 3.5 5.4 3.5 8.5s-1 5.9-3.5 8.5c-2.5-2.6-3.5-5.4-3.5-8.5s1-5.9 3.5-8.5Z"/></symbol>
+  <symbol id="i-history" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12a8 8 0 1 0 2.3-5.7L4 8.5M4 4v4.5h4.5M12 8v4l3 2"/></symbol>
+  <symbol id="i-folder" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M3.5 7.5a2 2 0 0 1 2-2h4l2 2h7a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2v-10Z"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+  <symbol id="i-retry" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 1 1-2.3-5.7L20 8.5M20 4v4.5h-4.5"/></symbol>
+  <symbol id="i-file" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M7 3.5h7l4.5 4.5v12.5h-11.5Z M14 3.5V8h4.5"/></symbol>
+  <symbol id="i-link" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></symbol>
+  <symbol id="i-plug" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 3v5M15 3v5M6.5 8h11v3a5.5 5.5 0 0 1-11 0V8ZM12 16.5V21"/></symbol>
+</svg>
+
+<div class="win">
+  <aside>
+    <div class="brand"><div class="logo"><svg width="18" height="18" style="color:#fff"><use href="#i-bolt"/></svg></div><b>TurboDL</b></div>
+    <div class="nav on"><svg><use href="#i-list"/></svg>Tout<span class="n">6</span></div>
+    <div class="nav"><svg><use href="#i-down"/></svg>En cours<span class="n">3</span></div>
+    <div class="nav"><svg><use href="#i-clock"/></svg>En attente<span class="n">1</span></div>
+    <div class="nav"><svg><use href="#i-check"/></svg>Terminés<span class="n">1</span></div>
+    <div class="sep"></div>
+    <div class="nav"><svg><use href="#i-magnet"/></svg>Torrents<span class="n">2</span></div>
+    <div class="nav"><svg><use href="#i-globe"/></svg>Liens directs<span class="n">4</span></div>
+    <div class="nav"><svg><use href="#i-history"/></svg>Historique</div>
+    <div class="side-foot">
+      <div class="pill"><span class="dot"></span>Extension connectée</div>
+      <div class="pill"><svg width="14" height="14"><use href="#i-plug"/></svg>Veille bloquée pendant les téléchargements</div>
+    </div>
+  </aside>
+
+  <main>
+    <div class="cmd">
+      <label class="field"><svg><use href="#i-link"/></svg>
+        <input placeholder="Collez un lien, un magnet… ou déposez des fichiers .torrent n'importe où" aria-label="Lien à ajouter">
+        <button class="ibtn" aria-label="Vider le champ"><svg><use href="#i-x"/></svg></button></label>
+      <button class="btn primary"><svg><use href="#i-down"/></svg>Ajouter</button>
+      <button class="btn" aria-label="Ouvrir des fichiers .torrent"><svg><use href="#i-file"/></svg>.torrent</button>
+    </div>
+    <div class="opts">
+      <span class="chip"><svg width="13" height="13"><use href="#i-folder"/></svg>Enregistrer dans <b>D:\Téléchargements</b></span>
+      <span class="chip"><b>16</b> connexions par fichier</span>
+      <span class="chip"><b>3</b> en même temps</span>
+    </div>
+
+    <section class="hero" aria-label="Débit total">
+      <svg class="graph" viewBox="0 0 1000 176" preserveAspectRatio="none" aria-hidden="true">
+        <defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="var(--accent)" stop-opacity=".28"/><stop offset="1" stop-color="var(--accent)" stop-opacity="0"/></linearGradient></defs>
+        <path d="M0 150 L60 148 L120 140 L180 120 L240 118 L300 104 L360 110 L420 92 L480 96 L540 80 L600 86 L660 70 L720 76 L780 62 L840 66 L900 58 L960 60 L1000 56 L1000 176 L0 176Z" fill="url(#g)"/>
+        <path d="M0 150 L60 148 L120 140 L180 120 L240 118 L300 104 L360 110 L420 92 L480 96 L540 80 L600 86 L660 70 L720 76 L780 62 L840 66 L900 58 L960 60 L1000 56" fill="none" stroke="var(--accent)" stroke-width="2" vector-effect="non-scaling-stroke"/>
+      </svg>
+      <div class="num">
+        <div class="cap">Débit total</div>
+        <div class="big">12,4<small>Mo/s</small></div>
+        <div class="sub">3 en cours · fin estimée dans 2 h 05</div>
+      </div>
+      <div class="stats">
+        <div class="stat"><div class="v">3</div><div class="l">en cours</div></div>
+        <div class="stat"><div class="v">1</div><div class="l">en attente</div></div>
+        <div class="stat"><div class="v">48,2 Go</div><div class="l">reçus aujourd'hui</div></div>
+      </div>
+    </section>
+
+    <div class="lhead"><h2>Téléchargements</h2><span class="c">6</span>
+      <div class="r"><span class="seg on">Ordre d'ajout</span><span class="seg">Vitesse</span><span class="seg">Restant</span></div></div>
+
+    <div class="list">
+      <div class="row run">
+        <div class="tile"><svg><use href="#i-magnet"/></svg></div>
+        <div><div class="name">Projet-video-rushs</div>
+          <div class="meta"><span class="st">En cours · 38 %</span><span>14,1 Go / 36,9 Go</span><span>42 pairs · 11 sources</span><span>↑ 320 Ko/s</span></div>
+          <div class="pieces" aria-hidden="true"></div></div>
+        <div class="speed"><div class="v">6,8 Mo/s</div><div class="l">reste 56 min</div></div>
+        <div class="acts"><button class="ibtn" aria-label="Pause"><svg><use href="#i-pause"/></svg></button><button class="ibtn" aria-label="Ouvrir le dossier"><svg><use href="#i-folder"/></svg></button><button class="ibtn" aria-label="Retirer"><svg><use href="#i-x"/></svg></button></div>
+      </div>
+      <div class="row run">
+        <div class="tile"><svg><use href="#i-globe"/></svg></div>
+        <div><div class="name">serveur-media-4k.mkv</div>
+          <div class="meta"><span class="st">En cours · 71 %</span><span>3,2 Go / 4,5 Go</span><span>16 connexions</span></div>
+          <div class="bar"><div class="fill" style="width:71%"></div></div></div>
+        <div class="speed"><div class="v">4,1 Mo/s</div><div class="l">reste 5 min</div></div>
+        <div class="acts"><button class="ibtn" aria-label="Pause"><svg><use href="#i-pause"/></svg></button><button class="ibtn" aria-label="Ouvrir le dossier"><svg><use href="#i-folder"/></svg></button><button class="ibtn" aria-label="Retirer"><svg><use href="#i-x"/></svg></button></div>
+      </div>
+      <div class="row run">
+        <div class="tile"><svg><use href="#i-globe"/></svg></div>
+        <div><div class="name">pack-pilotes-2026.zip</div>
+          <div class="meta"><span class="st">En cours · 12 %</span><span>96 Mo / 812 Mo</span><span>16 connexions</span></div>
+          <div class="bar"><div class="fill" style="width:12%"></div></div></div>
+        <div class="speed"><div class="v">1,5 Mo/s</div><div class="l">reste 8 min</div></div>
+        <div class="acts"><button class="ibtn" aria-label="Pause"><svg><use href="#i-pause"/></svg></button><button class="ibtn" aria-label="Ouvrir le dossier"><svg><use href="#i-folder"/></svg></button><button class="ibtn" aria-label="Retirer"><svg><use href="#i-x"/></svg></button></div>
+      </div>
+      <div class="row paused">
+        <div class="tile"><svg><use href="#i-globe"/></svg></div>
+        <div><div class="name">sauvegarde-nas.img</div>
+          <div class="meta"><span class="st">En pause · 65 %</span><span>31,0 Mo / 48,0 Mo</span></div>
+          <div class="bar"><div class="fill" style="width:65%"></div></div></div>
+        <div class="speed"><div class="v" style="color:var(--faint)">—</div><div class="l">en pause</div></div>
+        <div class="acts"><button class="ibtn" aria-label="Reprendre"><svg><use href="#i-play"/></svg></button><button class="ibtn" aria-label="Ouvrir le dossier"><svg><use href="#i-folder"/></svg></button><button class="ibtn" aria-label="Retirer"><svg><use href="#i-x"/></svg></button></div>
+      </div>
+      <div class="row err">
+        <div class="tile"><svg><use href="#i-globe"/></svg></div>
+        <div><div class="name">absent.zip</div>
+          <div class="meta"><span class="st">Erreur</span><span>Fichier introuvable sur le serveur (404). Le lien est peut-être expiré.</span></div>
+          <div class="bar"></div></div>
+        <div class="speed"><div class="v" style="color:var(--faint)">—</div><div class="l">à réessayer</div></div>
+        <div class="acts"><button class="ibtn" aria-label="Réessayer"><svg><use href="#i-retry"/></svg></button><button class="ibtn" aria-label="Ouvrir le dossier"><svg><use href="#i-folder"/></svg></button><button class="ibtn" aria-label="Retirer"><svg><use href="#i-x"/></svg></button></div>
+      </div>
+      <div class="row done">
+        <div class="tile"><svg><use href="#i-check"/></svg></div>
+        <div><div class="name">rapport-annuel.pdf</div>
+          <div class="meta"><span class="st">Terminé</span><span>18,4 Mo · D:\Téléchargements</span></div>
+          <div class="bar"><div class="fill" style="width:100%"></div></div></div>
+        <div class="speed"><div class="v" style="color:var(--faint)">—</div><div class="l">il y a 2 min</div></div>
+        <div class="acts"><button class="ibtn" aria-label="Ouvrir"><svg><use href="#i-file"/></svg></button><button class="ibtn" aria-label="Ouvrir le dossier"><svg><use href="#i-folder"/></svg></button><button class="ibtn" aria-label="Retirer"><svg><use href="#i-x"/></svg></button></div>
+      </div>
+    </div>
+
+    <div class="note">Maquette de direction artistique (données d'exemple). Bouton en bas à droite : thème clair / sombre.</div>
+  </main>
+</div>
+<button class="btn theme" onclick="document.documentElement.dataset.theme = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark'">Clair / sombre</button>
+<script>
+  // carte des pièces du torrent d'exemple
+  const p = document.querySelector(".pieces");
+  for (let i = 0; i < 120; i++) {
+    const r = Math.sin(i * 12.9898) * 43758.5453 % 1, x = Math.abs(r);
+    const el = document.createElement("i");
+    el.className = i < 30 ? "" : x < 0.35 ? "" : x < 0.5 ? "p" : "n";
+    p.appendChild(el);
+  }
+</script>
+</body>
+</html>
