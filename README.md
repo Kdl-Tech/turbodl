@@ -95,4 +95,4 @@ See the commands in the French section above (`python turbodl.py`, PyInstaller o
 
 ---
 
-Licence : gratuiciel KDL TECH (code source non libre) — © KDL TECH. Voir [LICENSE](LICENSE).
+Licence : MIT — © KDL TECH

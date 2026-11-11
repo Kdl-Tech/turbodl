@@ -1,36 +1,21 @@
-KDL TECH — Licence gratuiciel / Freeware licence
-Copyright (c) 2026 KDL TECH. Tous droits réservés / All rights reserved.
+MIT License
 
-FRANÇAIS
+Copyright (c) 2026 KDL TECH
 
-1. Ce logiciel est gratuit. Vous pouvez l'installer et l'utiliser sans frais,
-   à titre personnel ou professionnel.
-2. Le code source n'est pas distribué sous licence libre. Sauf accord écrit de
-   KDL TECH, il est interdit de le copier, de le modifier, de le redistribuer,
-   de le vendre ou d'en tirer un produit dérivé. La décompilation n'est permise
-   que dans les cas prévus par la loi.
-3. Le logiciel est fourni « tel quel », sans garantie d'aucune sorte. KDL TECH
-   ne peut être tenu responsable des dommages liés à son utilisation, dans les
-   limites prévues par la loi.
-4. Les copies obtenues avant le 10 novembre 2026 sous licence MIT restent
-   couvertes par cette licence MIT. Toute version publiée à partir de cette
-   date relève de la présente licence.
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
 
-Contact : contact@kdl-tech.fr — https://kdl-tech.fr
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
 
-ENGLISH
-
-1. This software is free of charge. You may install and use it at no cost,
-   for personal or professional purposes.
-2. The source code is not released under an open-source licence. Without
-   written permission from KDL TECH, you may not copy, modify, redistribute or
-   sell it, or build derivative works from it. Decompiling is allowed only
-   where the law permits it.
-3. The software is provided "as is", without warranty of any kind. To the
-   extent permitted by law, KDL TECH is not liable for any damage arising from
-   its use.
-4. Copies obtained under the MIT licence before 10 November 2026 remain
-   covered by that MIT licence. Every version released from that date on is
-   covered by this licence.
-
-Contact: contact@kdl-tech.fr — https://kdl-tech.fr
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
