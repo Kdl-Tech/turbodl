@@ -1,11 +1,13 @@
 # TurboDL
 
-**FR** — Gestionnaire de téléchargements pour Windows : liens directs multi-connexions et BitTorrent (magnet / .torrent) dans une seule interface, avec reprise automatique et extension navigateur.
-**EN** — Windows download manager: multi-connection direct links and BitTorrent (magnet / .torrent) in one window, with automatic resume and a browser extension.
+**FR** — Gestionnaire de téléchargements pour Windows et Linux : liens directs multi-connexions et BitTorrent (magnet / .torrent) dans une seule interface, avec reprise automatique et extension navigateur.
+**EN** — Download manager for Windows and Linux: multi-connection direct links and BitTorrent (magnet / .torrent) in one window, with automatic resume and a browser extension.
 
 | Sombre / Dark | Clair / Light |
 |---|---|
 | ![TurboDL sombre](docs/turbodl-sombre.png) | ![TurboDL clair](docs/turbodl-clair.png) |
+
+![TurboDL 1.8.0 sous Linux / on Linux](docs/turbodl-linux-sombre.png)
 
 ---
 
@@ -15,9 +17,20 @@
 - **Liens directs** découpés en segments (jusqu'à 32 connexions par fichier), reprise après coupure.
 - **BitTorrent** via libtorrent : magnets, fichiers .torrent, DHT, découverte locale, UPnP/NAT-PMP, trackers publics ajoutés automatiquement.
 - **File d'attente** : nombre de téléchargements simultanés réglable.
-- **Historique** (`%LOCALAPPDATA%\TurboDL\historique.json`) : reprise automatique au redémarrage de ce qui était en cours.
+- **Historique** (`%LOCALAPPDATA%\TurboDL\historique.json`, Linux : `~/.local/share/TurboDL/`) : reprise automatique au redémarrage de ce qui était en cours.
 - **Extension navigateur** (Chrome/Edge) pour envoyer un lien à TurboDL d'un clic.
-- Thèmes clair et sombre (suit Windows), mise en veille bloquée pendant les téléchargements.
+- **Limite de débit** réglable (liens directs et torrents), pour garder de la bande passante pour le reste.
+- Thèmes clair et sombre (suit Windows ou le bureau Linux), mise en veille bloquée pendant les téléchargements.
+
+### Installer
+- **Windows** : `TurboDL-1.7.1.exe` sur [kdl-tech.fr](https://kdl-tech.fr/logiciels/turbodl/).
+- **Linux (Debian, Ubuntu, Mint…)** : `turbodl_1.8.0_all.deb` sur [kdl-tech.fr](https://kdl-tech.fr/logiciels/turbodl/), puis `sudo apt install ./turbodl_1.8.0_all.deb` (installe aussi Python, Tk et libtorrent).
+
+### Nouveautés 1.8.0
+- **Version Linux** : paquet .deb, dossier Téléchargements de la session, ouverture des fichiers et dossiers avec les programmes du bureau, association des .torrent et des liens magnet (xdg-mime), thème clair/sombre du bureau, mise en veille bloquée (systemd-inhibit).
+- **Limite de débit** : puce « Débit » (illimité à 50 Mo/s), appliquée aux liens directs et aux torrents.
+- **Notification du bureau** quand un téléchargement se termine (Linux).
+- Compteurs du tableau de bord : libellés jamais coupés.
 
 ### Nouveautés 1.7.1
 - Reprise rapide des torrents : plus de revérification complète à chaque lancement.
@@ -34,6 +47,7 @@
 pip install libtorrent certifi
 python turbodl.py
 ```
+Linux : `sudo apt install python3-tk python3-libtorrent` puis `python3 turbodl.py`. Paquet : `sh packaging/construire-deb.sh`.
 
 ### Compiler l'exe
 ```
@@ -51,9 +65,20 @@ python -m PyInstaller --noconfirm --onefile --windowed --name TurboDL --icon tur
 - **Direct links** split into segments (up to 32 connections per file), resumable.
 - **BitTorrent** via libtorrent: magnets, .torrent files, DHT, local discovery, UPnP/NAT-PMP, public trackers added automatically.
 - **Queue** with a configurable number of parallel downloads.
-- **History** (`%LOCALAPPDATA%\TurboDL\historique.json`): unfinished downloads resume on restart.
+- **History** (`%LOCALAPPDATA%\TurboDL\historique.json`, Linux: `~/.local/share/TurboDL/`): unfinished downloads resume on restart.
 - **Browser extension** (Chrome/Edge) to send a link to TurboDL in one click.
-- Light and dark themes (follows Windows); sleep is blocked while downloading.
+- **Speed limit** (direct links and torrents) to keep bandwidth for everything else.
+- Light and dark themes (follows Windows or the Linux desktop); sleep is blocked while downloading.
+
+### Install
+- **Windows**: `TurboDL-1.7.1.exe` from [kdl-tech.fr](https://kdl-tech.fr/en/software/turbodl/).
+- **Linux (Debian, Ubuntu, Mint…)**: `turbodl_1.8.0_all.deb` from [kdl-tech.fr](https://kdl-tech.fr/en/software/turbodl/), then `sudo apt install ./turbodl_1.8.0_all.deb`.
+
+### What's new in 1.8.0
+- **Linux version**: .deb package, session Downloads folder, files and folders opened with desktop apps, .torrent and magnet association (xdg-mime), desktop light/dark theme, sleep blocked (systemd-inhibit).
+- **Speed limit**: "Speed" chip (unlimited to 50 MB/s), for direct links and torrents.
+- **Desktop notification** when a download finishes (Linux).
+- Dashboard counters: labels never cut off.
 
 ### What's new in 1.7.1
 - Torrent fast resume: no full re-check on every launch.

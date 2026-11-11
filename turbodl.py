@@ -32,10 +32,69 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
-VERSION = "1.7.1"
-UA = f"Mozilla/5.0 (Windows NT 10.0; Win64; x64) TurboDL/{VERSION}"
+VERSION = "1.8.0"
+UA = (f"Mozilla/5.0 (Windows NT 10.0; Win64; x64) TurboDL/{VERSION}" if sys.platform == "win32"
+      else f"Mozilla/5.0 (X11; Linux x86_64) TurboDL/{VERSION}")
 CHUNK = 256 * 1024             # taille de lecture réseau
 MIN_SPLIT = 2 * 1024 * 1024    # on ne recoupe pas un segment restant < 2 Mo
+
+
+class RateLimiter:
+    """Limite de débit globale (seau à jetons) partagée par toutes les connexions
+    des liens directs. 0 = illimité. Les torrents suivent la même limite via libtorrent."""
+
+    def __init__(self):
+        self.rate = 0
+        self.tokens = 0.0
+        self.last = time.monotonic()
+        self.cond = threading.Condition()
+
+    def set(self, rate):
+        with self.cond:
+            self.rate = max(0, int(rate))
+            self.tokens = 0.0
+            self.last = time.monotonic()
+            self.cond.notify_all()
+        ses = _LT.get("session") if "_LT" in globals() else None
+        if ses is not None:
+            ses.apply_settings({"download_rate_limit": self.rate})
+
+    def take(self, n, stop=None):
+        while True:
+            with self.cond:
+                if self.rate <= 0:
+                    return
+                now = time.monotonic()
+                self.tokens = min(self.tokens + (now - self.last) * self.rate, float(self.rate))
+                self.last = now
+                if self.tokens >= n or self.tokens >= self.rate:   # gros morceau : on paie à crédit
+                    self.tokens -= n
+                    return
+                wait = (min(n, self.rate) - self.tokens) / self.rate
+                self.cond.wait(min(wait, 0.5))
+            if stop is not None and stop.is_set():
+                return
+
+
+RATE = RateLimiter()
+LIMITS = (("Illimité", 0), ("1 Mo/s", 1), ("2 Mo/s", 2), ("5 Mo/s", 5), ("10 Mo/s", 10),
+          ("20 Mo/s", 20), ("50 Mo/s", 50))
+
+
+def desktop_notify(title, body):
+    """Notification du bureau (Linux : notify-send si présent). Silencieux sinon."""
+    if sys.platform == "win32":
+        return
+    exe = shutil.which("notify-send")
+    if not exe:
+        return
+    import subprocess
+    try:
+        subprocess.Popen([exe, "--app-name=TurboDL", "--icon=turbodl", title, body],
+                         stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
+                         stderr=subprocess.DEVNULL, start_new_session=True)
+    except OSError:
+        pass
 MAX_RETRIES = 8
 NET_ERRORS = (urllib.error.URLError, OSError, http.client.HTTPException)
 BRIDGE_PORT = 47321
@@ -182,8 +241,15 @@ def human_time(s):
 
 
 # ------------------------------------------------------------ outils système
+def data_root():
+    """Windows : %LOCALAPPDATA% ; Linux : $XDG_DATA_HOME (~/.local/share)."""
+    if sys.platform == "win32":
+        return os.environ.get("LOCALAPPDATA", os.path.expanduser("~"))
+    return os.environ.get("XDG_DATA_HOME") or os.path.join(os.path.expanduser("~"), ".local", "share")
+
+
 def app_dir(*parts):
-    d = os.path.join(os.environ.get("LOCALAPPDATA", os.path.expanduser("~")), "TurboDL", *parts)
+    d = os.path.join(data_root(), "TurboDL", *parts)
     os.makedirs(d, exist_ok=True)
     return d
 
@@ -196,9 +262,28 @@ def check_space(folder, need):
                       f"il reste {human(free)}. Choisissez un autre dossier ou libérez de la place.")
 
 
+_INHIBIT = {"proc": None}
+
+
 def keep_awake(on):
-    """Empêche la mise en veille automatique pendant un téléchargement."""
+    """Empêche la mise en veille automatique pendant un téléchargement.
+    Linux : verrou systemd-inhibit tenu tant qu'un téléchargement tourne."""
     if sys.platform != "win32":
+        import subprocess
+        proc = _INHIBIT["proc"]
+        if on and (proc is None or proc.poll() is not None):
+            exe = shutil.which("systemd-inhibit")
+            if exe:
+                try:
+                    _INHIBIT["proc"] = subprocess.Popen(
+                        [exe, "--what=sleep:idle", "--who=TurboDL", "--mode=block",
+                         "--why=Téléchargement en cours", "sleep", "infinity"],
+                        stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                except OSError:
+                    _INHIBIT["proc"] = None
+        elif not on and proc is not None:
+            proc.terminate()
+            _INHIBIT["proc"] = None
         return
     import ctypes
     es_continuous, es_system_required = 0x80000000, 0x00000001
@@ -206,14 +291,42 @@ def keep_awake(on):
         es_continuous | (es_system_required if on else 0))
 
 
-PREFERRED_DIRS = [r"D:\Téléchargements"]   # disque de stockage, avant le disque système
+PREFERRED_DIRS = [r"D:\Téléchargements"] if sys.platform == "win32" else []   # disque de stockage Windows
 
 
 def default_dir():
     for d in PREFERRED_DIRS:
         if os.path.isdir(d):
             return d
+    if sys.platform != "win32":
+        import subprocess
+        try:   # dossier Téléchargements de la session (xdg-user-dirs), dans la langue du système
+            d = subprocess.run(["xdg-user-dir", "DOWNLOAD"], capture_output=True, text=True,
+                               timeout=3).stdout.strip()
+            if d and os.path.isdir(d) and d != os.path.expanduser("~"):
+                return d
+        except (OSError, subprocess.SubprocessError):
+            pass
+        for n in ("Téléchargements", "Downloads"):
+            d = os.path.join(os.path.expanduser("~"), n)
+            if os.path.isdir(d):
+                return d
     return os.path.join(os.path.expanduser("~"), "Downloads")
+
+
+def open_path(p):
+    """Ouvre un fichier ou un dossier avec le programme par défaut du système."""
+    if not p or not os.path.exists(p):
+        return
+    if sys.platform == "win32":
+        os.startfile(p)
+        return
+    import subprocess
+    try:
+        subprocess.Popen(["xdg-open", p], stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
+                         stderr=subprocess.DEVNULL, start_new_session=True)
+    except OSError:
+        pass
 
 
 def load_settings():
@@ -505,6 +618,7 @@ class Downloader:
                         if not data:
                             break
                         got = True
+                        RATE.take(len(data), self.stop_evt)
                         with self.lock:   # l'écriture et l'avancement restent atomiques
                             n = min(len(data), seg.end - seg.pos + 1)
                             if n > 0:
@@ -616,6 +730,7 @@ def lt_session():
                 "active_downloads": -1, "active_seeds": -1, "active_limit": -1,
                 "active_checking": 2, "aio_threads": 16, "hashing_threads": 4,
                 "send_buffer_watermark": 3 * 1024 * 1024,
+                "download_rate_limit": RATE.rate,
             })
         return _LT["session"]
 
@@ -914,8 +1029,7 @@ def extension_dir():
                        "extension")
     if not getattr(sys, "frozen", False):
         return src
-    dst = os.path.join(os.environ.get("LOCALAPPDATA", os.path.expanduser("~")),
-                       "TurboDL", "extension")
+    dst = os.path.join(data_root(), "TurboDL", "extension")
     try:
         shutil.copytree(src, dst, dirs_exist_ok=True)
     except OSError:
@@ -961,9 +1075,26 @@ def cli(args):
 
 
 # ---------------------------------------------------------- interface graphique
+LINUX_DESKTOP = "turbodl.desktop"
+
+
+def linux_installed():
+    """Paquet .deb installé : lanceur et fichier .desktop présents."""
+    return any(os.path.isfile(os.path.join(d, "applications", LINUX_DESKTOP))
+               for d in ("/usr/share", "/usr/local/share"))
+
+
 def register_handlers(exe, base=r"Software\Classes"):
     """Associe les fichiers .torrent et les liens magnet à TurboDL
-    (réglages de l'utilisateur uniquement, HKEY_CURRENT_USER)."""
+    (réglages de l'utilisateur uniquement : HKEY_CURRENT_USER, ou xdg-mime sous Linux)."""
+    if sys.platform != "win32":
+        import subprocess
+        for mime in ("application/x-bittorrent", "x-scheme-handler/magnet"):
+            r = subprocess.run(["xdg-mime", "default", LINUX_DESKTOP, mime],
+                               capture_output=True, text=True, timeout=15)
+            if r.returncode:
+                raise OSError(r.stderr.strip() or f"xdg-mime : code {r.returncode}")
+        return
     import winreg
     cmd = f'"{exe}" "%1"'
     icon = f'"{exe}",0'
@@ -1059,6 +1190,8 @@ THEMES = {
 
 
 def system_theme():
+    if sys.platform != "win32":
+        return linux_theme()
     try:
         import winreg
         k = winreg.OpenKey(winreg.HKEY_CURRENT_USER,
@@ -1066,6 +1199,31 @@ def system_theme():
         return "clair" if winreg.QueryValueEx(k, "AppsUseLightTheme")[0] == 1 else "sombre"
     except OSError:
         return "sombre"
+
+
+def linux_theme():
+    """GNOME/Cinnamon/Xfce (gsettings, thème GTK) puis KDE (kdeglobals) ; sombre par défaut."""
+    import subprocess
+    for key in (("org.gnome.desktop.interface", "color-scheme"),
+                ("org.gnome.desktop.interface", "gtk-theme"),
+                ("org.cinnamon.desktop.interface", "gtk-theme")):
+        try:
+            v = subprocess.run(["gsettings", "get", *key], capture_output=True, text=True,
+                               timeout=3).stdout.strip().strip("'").lower()
+        except (OSError, subprocess.SubprocessError):
+            break
+        if "dark" in v:
+            return "sombre"
+        if v == "prefer-light" or (key[1] == "gtk-theme" and v):
+            return "clair"
+    try:
+        with open(os.path.expanduser("~/.config/kdeglobals"), encoding="utf-8") as fh:
+            m = re.search(r"^ColorScheme=(.*)$", fh.read(), re.M)
+        if m:
+            return "sombre" if "dark" in m.group(1).lower() else "clair"
+    except OSError:
+        pass
+    return "sombre"
 
 
 def blend(c1, c2, t):
@@ -1109,12 +1267,22 @@ def gui(initial=None):
     root.geometry(f"{min(1240, sw - 60)}x{max(640, min(900, sh - 90))}")
     root.minsize(960, 620)
     try:
-        root.iconbitmap(resource("turbodl.ico"))
+        if sys.platform == "win32":
+            root.iconbitmap(resource("turbodl.ico"))
+        else:
+            root._icone = tk.PhotoImage(file=resource("turbodl.png"))
+            root.iconphoto(True, root._icone)
     except tk.TclError:
         pass
     fams = set(tkfont.families(root))
-    FONT = "Segoe UI Variable Text" if "Segoe UI Variable Text" in fams else "Segoe UI"
-    DISPLAY = "Segoe UI Variable Display" if "Segoe UI Variable Display" in fams else "Segoe UI"
+    if sys.platform == "win32":
+        FONT = "Segoe UI Variable Text" if "Segoe UI Variable Text" in fams else "Segoe UI"
+        DISPLAY = "Segoe UI Variable Display" if "Segoe UI Variable Display" in fams else "Segoe UI"
+    else:
+        FONT = next((f for f in ("Inter", "Cantarell", "Noto Sans", "Ubuntu", "DejaVu Sans")
+                     if f in fams), "TkDefaultFont")
+        DISPLAY = next((f for f in ("Inter Display", "Inter", "Cantarell", "Noto Sans",
+                                    "Ubuntu", "DejaVu Sans") if f in fams), FONT)
     style = ttk.Style(root)
     style.theme_use("clam")
     style.configure("D.Vertical.TScrollbar", background=SURF2, troughcolor=BG, bordercolor=BG,
@@ -1399,6 +1567,14 @@ def gui(initial=None):
                            else default_dir())
     conn_var = tk.StringVar(value=str(settings.get("connections", 16)))
     par_var = tk.StringVar(value=str(settings.get("parallel", 3)))
+    lim_names = [n for n, _ in LIMITS]
+    lim_var = tk.StringVar(value=settings.get("limit") if settings.get("limit") in lim_names
+                           else "Illimité")
+
+    def apply_limit(*_):
+        RATE.set(dict(LIMITS).get(lim_var.get(), 0) * 1024 * 1024)
+    lim_var.trace_add("write", apply_limit)
+    apply_limit()
     bridge = start_bridge(st["inbox"].put)
 
     # ----------------------------------------------------------- barre latérale
@@ -1532,7 +1708,8 @@ def gui(initial=None):
         if url_var.get():
             hint.place_forget()
         else:
-            hint.config(text="Collez un lien, un magnet… ou déposez des fichiers .torrent n'importe où")
+            hint.config(text="Collez un lien, un magnet… ou déposez des fichiers .torrent n'importe où"
+                        if sys.platform == "win32" else "Collez un lien ou un magnet…")
             hint.place(in_=url_entry, x=2, rely=0.5, anchor="w")
     url_var.trace_add("write", placeholder)
     hint.bind("<Button-1>", lambda e: url_entry.focus_set())
@@ -1605,6 +1782,9 @@ def gui(initial=None):
     chip("parallel", lambda: [(par_var.get(), True), ("  en même temps", False)],
          action=choose(par_var, (1, 2, 3, 4, 5, 6, 8, 10), "parallel"),
          tip="Nombre de téléchargements simultanés")
+    chip("limit", lambda: [("Débit  ", False), (lim_var.get(), True)], "down",
+         action=choose(lim_var, lim_names, "limit"),
+         tip="Limiter le débit total (pour garder de la bande passante pour le reste)")
 
     # ----------------------------------------------------------- cockpit (point focal)
     HERO_H = 176
@@ -1653,7 +1833,8 @@ def gui(initial=None):
         for value, lbl, tint in reversed(((str(running), "en cours", ACC),
                                           (str(waiting), "en attente", AMBER),
                                           (human(st["today"]["bytes"]), "reçus aujourd'hui", VIOLET))):
-            bw = max(104, tkfont.Font(family=DISPLAY, size=14, weight="bold").measure(value) + 28)
+            bw = max(104, tkfont.Font(family=DISPLAY, size=14, weight="bold").measure(value) + 28,
+                     tkfont.Font(family=FONT, size=8).measure(lbl) + 28)
             rounded(c, x - bw, 22, x, 76, 10, fill=blend(tint, SURF, 0.12),
                     outline=blend(tint, SURF, 0.35))
             c.create_text(x - bw + 14, 42, text=value, anchor="w", fill=tint,
@@ -1826,9 +2007,7 @@ def gui(initial=None):
                 self.state = "paused"
                 hist.upsert(self.job["hid"], status="paused")
             elif self.state == "done":
-                p = self.snap.get("path")
-                if p and os.path.exists(p) and sys.platform == "win32":
-                    os.startfile(p)
+                open_path(self.snap.get("path"))
             else:                                   # en pause / erreur : on relance
                 self.state = "waiting"
                 hist.upsert(self.job["hid"], status="waiting")
@@ -1837,8 +2016,8 @@ def gui(initial=None):
 
         def open_dir(self):
             d = self.job.get("out_dir", "")
-            if os.path.isdir(d) and sys.platform == "win32":
-                os.startfile(d)
+            if os.path.isdir(d):
+                open_path(d)
 
         def remove(self):
             if self.state == "running":
@@ -1880,6 +2059,7 @@ def gui(initial=None):
                 if self.state == "done":
                     self.done_at = time.strftime("%H:%M")
                     notify(f"Terminé : {short(self.name(), 90)}", OK)
+                    desktop_notify("Téléchargement terminé", short(self.name(), 120))
 
         def checking(self):
             return (self.state == "running" and self.torrent
@@ -2053,7 +2233,10 @@ def gui(initial=None):
             if st["filter"] == "all":
                 empty_title.config(text="Rien en cours pour l'instant")
                 empty_text.config(text="Collez un lien ou un magnet ci-dessus, ou glissez vos "
-                                       "fichiers .torrent\nn'importe où dans cette fenêtre.")
+                                       "fichiers .torrent\nn'importe où dans cette fenêtre."
+                                  if sys.platform == "win32" else
+                                  "Collez un lien ou un magnet ci-dessus, ou ouvrez un fichier "
+                                  ".torrent\navec TurboDL (double-clic après « Associer les .torrent »).")
             else:
                 empty_title.config(text=f"Rien dans « {FILTER_NAMES[st['filter']]} »")
                 empty_text.config(text="Choisissez « Tout » dans la colonne de gauche pour "
@@ -2317,8 +2500,8 @@ def gui(initial=None):
 
         def open_folder():
             e = current()
-            if e and os.path.isdir(e.get("out_dir", "")) and sys.platform == "win32":
-                os.startfile(e["out_dir"])
+            if e and os.path.isdir(e.get("out_dir", "")):
+                open_path(e["out_dir"])
 
         def forget():
             e = current()
@@ -2346,8 +2529,8 @@ def gui(initial=None):
         d = extension_dir()
         root.clipboard_clear()
         root.clipboard_append(d)
-        if sys.platform == "win32" and os.path.isdir(d):
-            os.startfile(d)
+        if os.path.isdir(d):
+            open_path(d)
         status_lbl.config(fg=FG, text=(
             "Installer l'extension (une seule fois) :\n"
             "1. Ouvrez chrome://extensions (Edge : edge://extensions, Brave : brave://extensions)\n"
@@ -2358,22 +2541,29 @@ def gui(initial=None):
 
 
     def associate():
-        if not getattr(sys, "frozen", False):
+        win = sys.platform == "win32"
+        if win and not getattr(sys, "frozen", False):
             notify("Disponible uniquement dans TurboDL.exe.", ERR)
+            return
+        if not win and not linux_installed():
+            notify("Disponible uniquement avec le paquet TurboDL installé (.deb).", ERR)
             return
         if not messagebox.askyesno(
                 "Ouvrir les torrents avec TurboDL",
                 "TurboDL va devenir le programme qui ouvre :\n"
                 "  • les fichiers .torrent (double-clic)\n"
                 "  • les liens magnet (clic dans le navigateur)\n\n"
-                "Cela ne modifie que vos réglages Windows d'utilisateur.\n"
-                "Si vous déplacez TurboDL.exe, refaites ce réglage.\n\nContinuer ?", parent=root):
+                + ("Cela ne modifie que vos réglages Windows d'utilisateur.\n"
+                   "Si vous déplacez TurboDL.exe, refaites ce réglage.\n\nContinuer ?" if win else
+                   "Cela ne modifie que vos réglages d'utilisateur (xdg-mime).\n\nContinuer ?"),
+                parent=root):
             return
         try:
             register_handlers(sys.executable)
-            notify("Les .torrent et les liens magnet s'ouvrent maintenant avec TurboDL. Si Windows "
-                   "demande quel programme utiliser, choisissez TurboDL puis « Toujours ».", OK)
-        except OSError as e:
+            notify("Les .torrent et les liens magnet s'ouvrent maintenant avec TurboDL."
+                   + (" Si Windows demande quel programme utiliser, choisissez TurboDL puis "
+                      "« Toujours »." if win else ""), OK)
+        except (OSError, ValueError) as e:
             notify(f"Association impossible : {e}", ERR)
 
     # ----------------------------------------------------------- démarrage
@@ -2450,7 +2640,7 @@ def main():
         with open(args.selftest, "w", encoding="utf-8") as fh:
             fh.write("\n".join(lines))
         return
-    windowed = sys.stdout is None          # exe sans console
+    windowed = sys.stdout is None or os.environ.get("TURBODL_GUI") == "1"   # exe sans console / lanceur .desktop
     if args.url and (windowed or is_torrent(args.url) and not args.url.startswith("http")):
         # « Ouvrir avec TurboDL » : si TurboDL tourne déjà, on lui confie le travail
         url = os.path.abspath(args.url) if os.path.isfile(args.url) else args.url
