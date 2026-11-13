@@ -1180,7 +1180,7 @@ THEMES = {
                "on_primary": "#ffffff", "accent": "#2dd4ef", "ok": "#3ecf8e",
                "err": "#f2706b", "violet": "#a78bfa", "amber": "#fbbf24",
                "pink": "#f472b6", "dark": True},
-    "clair": {"bg": "#f5f3ee", "side": "#efece5", "surf": "#fffdf9", "surf2": "#f0ece4", "line": "#e1dbcf",
+    "clair": {"bg": "#f2ece1", "side": "#efe8db", "surf": "#fbf8f1", "surf2": "#f8f3ea", "line": "#e4daca",
               "hover": "#ebe6dc", "track": "#e9e4da", "text": "#18212d", "muted": "#566070",
               "faint": "#8a93a1", "primary": "#2456e3", "primary_hi": "#3a69ee",
               "on_primary": "#ffffff", "accent": "#0b8fae", "ok": "#1d9461",
