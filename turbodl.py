@@ -1226,6 +1226,18 @@ def linux_theme():
     return "sombre"
 
 
+THEME_CHOICES = (("systeme", "Système"), ("clair", "Clair"), ("sombre", "Sombre"))
+
+
+def resolve_theme(env=None, saved=None, system=None):
+    """Thème à afficher : TURBODL_THEME, sinon choix enregistré (clair/sombre),
+    sinon thème du système (choix « systeme » ou absent)."""
+    for v in (env, saved):
+        if v in THEMES:
+            return v
+    return (system or system_theme)()
+
+
 def blend(c1, c2, t):
     """Mélange deux couleurs hex : t=1 -> c1, t=0 -> c2."""
     a = [int(c1[i:i + 2], 16) for i in (1, 3, 5)]
@@ -1245,7 +1257,7 @@ def gui(initial=None):
     from tkinter import filedialog, messagebox, ttk
 
     settings = load_settings()
-    theme = os.environ.get("TURBODL_THEME") or settings.get("theme") or system_theme()
+    theme = resolve_theme(os.environ.get("TURBODL_THEME"), settings.get("theme"))
     P = THEMES.get(theme, THEMES["sombre"])
     BG, SIDE, SURF, SURF2, LINE, HOVER = P["bg"], P["side"], P["surf"], P["surf2"], P["line"], P["hover"]
     FG, MUTED, FAINT = P["text"], P["muted"], P["faint"]
@@ -1573,6 +1585,8 @@ def gui(initial=None):
 
     def apply_limit(*_):
         RATE.set(dict(LIMITS).get(lim_var.get(), 0) * 1024 * 1024)
+    theme_saved = settings.get("theme")
+    theme_var = tk.StringVar(value=theme_saved if theme_saved in THEMES else "systeme")
     lim_var.trace_add("write", apply_limit)
     apply_limit()
     bridge = start_bridge(st["inbox"].put)
@@ -1785,6 +1799,26 @@ def gui(initial=None):
     chip("limit", lambda: [("Débit  ", False), (lim_var.get(), True)], "down",
          action=choose(lim_var, lim_names, "limit"),
          tip="Limiter le débit total (pour garder de la bande passante pour le reste)")
+
+
+    def choose_theme(c):
+        """Thème Système / Clair / Sombre : mémorisé, appliqué au prochain lancement
+        (les couleurs sont fixées à la construction de la fenêtre)."""
+        def pick(v):
+            save_settings(theme=v)
+            chips["theme"].paint()
+            new = resolve_theme(os.environ.get("TURBODL_THEME"), v)
+            if new != theme:
+                messagebox.showinfo("Thème", "Thème enregistré. Il sera appliqué au prochain "
+                                    "lancement de TurboDL.", parent=root)
+        m = tk.Menu(root, tearoff=0, bg=SURF2, fg=FG, activebackground=PRIMARY,
+                    activeforeground=P["on_primary"], font=(FONT, 10), bd=0)
+        for v, name in THEME_CHOICES:
+            m.add_radiobutton(label=name, value=v, variable=theme_var, command=lambda v=v: pick(v))
+        m.tk_popup(c.winfo_rootx(), c.winfo_rooty() + c.winfo_height() + 4)
+
+    chip("theme", lambda: [("Thème  ", False), (dict(THEME_CHOICES)[theme_var.get()], True)],
+         action=choose_theme, tip="Thème : Système (suit l'ordinateur), Clair ou Sombre")
 
     # ----------------------------------------------------------- cockpit (point focal)
     HERO_H = 176
