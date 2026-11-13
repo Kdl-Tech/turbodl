@@ -32,7 +32,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
-VERSION = "1.8.0"
+VERSION = "1.9.0"
 UA = (f"Mozilla/5.0 (Windows NT 10.0; Win64; x64) TurboDL/{VERSION}" if sys.platform == "win32"
       else f"Mozilla/5.0 (X11; Linux x86_64) TurboDL/{VERSION}")
 CHUNK = 256 * 1024             # taille de lecture réseau

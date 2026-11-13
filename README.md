@@ -7,7 +7,7 @@
 |---|---|
 | ![TurboDL sombre](docs/turbodl-sombre.png) | ![TurboDL clair](docs/turbodl-clair.png) |
 
-![TurboDL 1.8.0 sous Linux / on Linux](docs/turbodl-linux-sombre.png)
+![TurboDL 1.9.0 sous Linux / on Linux](docs/turbodl-linux-sombre.png)
 
 ---
 
@@ -23,8 +23,12 @@
 - Thèmes clair et sombre (suit Windows ou le bureau Linux), mise en veille bloquée pendant les téléchargements.
 
 ### Installer
-- **Windows** : `TurboDL-1.7.1.exe` sur [kdl-tech.fr](https://kdl-tech.fr/logiciels/turbodl/).
-- **Linux (Debian, Ubuntu, Mint…)** : `turbodl_1.8.0_all.deb` sur [kdl-tech.fr](https://kdl-tech.fr/logiciels/turbodl/), puis `sudo apt install ./turbodl_1.8.0_all.deb` (installe aussi Python, Tk et libtorrent).
+- **Windows** : `TurboDL-1.9.0.exe` sur [kdl-tech.fr](https://kdl-tech.fr/logiciels/turbodl/).
+- **Linux (Debian, Ubuntu, Mint…)** : `turbodl_1.9.0_all.deb` sur [kdl-tech.fr](https://kdl-tech.fr/logiciels/turbodl/), puis `sudo apt install ./turbodl_1.9.0_all.deb` (installe aussi Python, Tk et libtorrent).
+
+### Nouveautés 1.9.0
+- **Thème au choix** : Système, Clair ou Sombre, mémorisé (par défaut, suit Windows ou le bureau Linux).
+- Thème clair revu : teintes sable et crème, aucune surface blanche.
 
 ### Nouveautés 1.8.0
 - **Version Linux** : paquet .deb, dossier Téléchargements de la session, ouverture des fichiers et dossiers avec les programmes du bureau, association des .torrent et des liens magnet (xdg-mime), thème clair/sombre du bureau, mise en veille bloquée (systemd-inhibit).
@@ -71,8 +75,12 @@ python -m PyInstaller --noconfirm --onefile --windowed --name TurboDL --icon tur
 - Light and dark themes (follows Windows or the Linux desktop); sleep is blocked while downloading.
 
 ### Install
-- **Windows**: `TurboDL-1.7.1.exe` from [kdl-tech.fr](https://kdl-tech.fr/en/software/turbodl/).
-- **Linux (Debian, Ubuntu, Mint…)**: `turbodl_1.8.0_all.deb` from [kdl-tech.fr](https://kdl-tech.fr/en/software/turbodl/), then `sudo apt install ./turbodl_1.8.0_all.deb`.
+- **Windows**: `TurboDL-1.9.0.exe` from [kdl-tech.fr](https://kdl-tech.fr/en/software/turbodl/).
+- **Linux (Debian, Ubuntu, Mint…)**: `turbodl_1.9.0_all.deb` from [kdl-tech.fr](https://kdl-tech.fr/en/software/turbodl/), then `sudo apt install ./turbodl_1.9.0_all.deb`.
+
+### What's new in 1.9.0
+- **Theme choice**: System, Light or Dark, remembered (follows Windows or the Linux desktop by default).
+- Reworked light theme: sand and cream tones, no white surfaces.
 
 ### What's new in 1.8.0
 - **Linux version**: .deb package, session Downloads folder, files and folders opened with desktop apps, .torrent and magnet association (xdg-mime), desktop light/dark theme, sleep blocked (systemd-inhibit).
