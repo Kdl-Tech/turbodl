@@ -11,7 +11,7 @@ install -d "$R/DEBIAN" "$R/opt/turbodl" "$R/usr/bin" "$R/usr/share/applications"
 install -m 644 turbodl.py logo-kdl.png turbodl.png "$R/opt/turbodl/"
 cp -r extension "$R/opt/turbodl/extension"; find "$R/opt/turbodl/extension" -type f -exec chmod 644 {} +
 install -m 644 turbodl.png "$R/usr/share/icons/hicolor/256x256/apps/turbodl.png"
-python3 -c 'import sys; sys.path.insert(0, "."); import mkicon; open(sys.argv[1], "wb").write(mkicon.png(48))' "$R/usr/share/icons/hicolor/48x48/apps/turbodl.png"
+cp packaging/turbodl-48.png "$R/usr/share/icons/hicolor/48x48/apps/turbodl.png"   # icône officielle A1 Acier
 install -m 644 LICENSE "$R/usr/share/doc/turbodl/copyright"
 cat > "$R/usr/bin/turbodl" <<'L'
 #!/bin/sh
