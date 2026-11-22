@@ -23,8 +23,12 @@
 - Thèmes clair et sombre (suit Windows ou le bureau Linux), mise en veille bloquée pendant les téléchargements.
 
 ### Installer
-- **Windows** : `TurboDL-1.9.0.exe` sur [kdl-tech.fr](https://kdl-tech.fr/logiciels/turbodl/).
-- **Linux (Debian, Ubuntu, Mint…)** : `turbodl_1.9.0_all.deb` sur [kdl-tech.fr](https://kdl-tech.fr/logiciels/turbodl/), puis `sudo apt install ./turbodl_1.9.0_all.deb` (installe aussi Python, Tk et libtorrent).
+- **Windows** : `TurboDL-1.9.1.exe` sur [kdl-tech.fr](https://kdl-tech.fr/logiciels/turbodl/).
+- **Linux (Debian, Ubuntu, Mint…)** : `turbodl_1.9.1_all.deb` sur [kdl-tech.fr](https://kdl-tech.fr/logiciels/turbodl/), puis `sudo apt install ./turbodl_1.9.1_all.deb` (installe aussi Python, Tk et libtorrent).
+
+### Nouveautés 1.9.1
+
+- Nouvelle icône officielle KDL (A1 Acier) dans la fenêtre, l’en-tête et l’extension.
 
 ### Nouveautés 1.9.0
 - **Thème au choix** : Système, Clair ou Sombre, mémorisé (par défaut, suit Windows ou le bureau Linux).
@@ -75,8 +79,12 @@ python -m PyInstaller --noconfirm --onefile --windowed --name TurboDL --icon tur
 - Light and dark themes (follows Windows or the Linux desktop); sleep is blocked while downloading.
 
 ### Install
-- **Windows**: `TurboDL-1.9.0.exe` from [kdl-tech.fr](https://kdl-tech.fr/en/software/turbodl/).
-- **Linux (Debian, Ubuntu, Mint…)**: `turbodl_1.9.0_all.deb` from [kdl-tech.fr](https://kdl-tech.fr/en/software/turbodl/), then `sudo apt install ./turbodl_1.9.0_all.deb`.
+- **Windows**: `TurboDL-1.9.1.exe` from [kdl-tech.fr](https://kdl-tech.fr/en/software/turbodl/).
+- **Linux (Debian, Ubuntu, Mint…)**: `turbodl_1.9.1_all.deb` from [kdl-tech.fr](https://kdl-tech.fr/en/software/turbodl/), then `sudo apt install ./turbodl_1.9.1_all.deb`.
+
+### What's new in 1.9.1
+
+- New official KDL icon (A1 Steel) in the window, header and browser extension.
 
 ### What's new in 1.9.0
 - **Theme choice**: System, Light or Dark, remembered (follows Windows or the Linux desktop by default).

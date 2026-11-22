@@ -32,7 +32,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
-VERSION = "1.9.0"
+VERSION = "1.9.1"
 UA = (f"Mozilla/5.0 (Windows NT 10.0; Win64; x64) TurboDL/{VERSION}" if sys.platform == "win32"
       else f"Mozilla/5.0 (X11; Linux x86_64) TurboDL/{VERSION}")
 CHUNK = 256 * 1024             # taille de lecture réseau
@@ -1600,13 +1600,11 @@ def gui(initial=None):
     sbx.pack(fill="both", expand=True)
     brand = tk.Frame(sbx, bg=SIDE)
     brand.pack(fill="x", padx=8, pady=(0, 24))
-    try:                                        # logo officiel KDL TECH, tel quel
+    try:                                        # icône officielle A1 Acier de TurboDL (44 px)
         brand.logo_img = tk.PhotoImage(file=resource("logo-kdl.png"))
         lw, lh = brand.logo_img.width(), brand.logo_img.height()
         logo = tk.Canvas(brand, width=lw + 12, height=lh + 8, bg=SIDE, highlightthickness=0)
         logo.pack(side="left")
-        if P["dark"]:                           # fond sombre : pastille claire, logo intact
-            rounded(logo, 0.5, 0.5, lw + 11.5, lh + 7.5, 9, fill="#ffffff", outline="")
         logo.create_image(6, 4, image=brand.logo_img, anchor="nw")
     except tk.TclError:
         pass
