@@ -32,7 +32,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
-VERSION = "1.9.1"
+VERSION = "1.9.2"
 UA = (f"Mozilla/5.0 (Windows NT 10.0; Win64; x64) TurboDL/{VERSION}" if sys.platform == "win32"
       else f"Mozilla/5.0 (X11; Linux x86_64) TurboDL/{VERSION}")
 CHUNK = 256 * 1024             # taille de lecture réseau
@@ -1733,6 +1733,51 @@ def gui(initial=None):
     chips_row = tk.Frame(main, bg=BG)
     chips_row.pack(fill="x", pady=(10, 0))
     chips = {}
+    chip_fb = tkfont.Font(family=FONT, size=9, weight="bold")
+    dir_max = [10 ** 6]   # largeur max (px) du chemin affiché, recalculée selon la fenêtre
+
+    def elide(path, maxw):
+        """Raccourcit le chemin par le début (« …/Téléchargements ») pour tenir en maxw px."""
+        if chip_fb.measure(path) <= maxw:
+            return path
+        s = path
+        while len(s) > 1 and chip_fb.measure("…" + s) > maxw:
+            s = s[1:]
+        return "…" + s
+
+    fit_job = [None]
+    compact = [False, 0]   # libellés courts quand la fenêtre est étroite ; largeur pour en sortir
+
+    def fit_chips(_e=None):
+        """Toutes les étiquettes (dont « Thème ») restent visibles : le chemin de
+        destination se raccourcit, puis les libellés passent en version courte."""
+        fit_job[0] = None
+        if "dir" not in chips or "theme" not in chips:
+            return
+        w = chips_row.winfo_width()
+        others = sum(int(c.cget("width")) + 8 for k, c in chips.items() if k != "dir")
+        label_w = 0 if compact[0] else tkfont.Font(family=FONT, size=9).measure("Enregistrer dans  ")
+        avail = w - others - (24 + 18 + 8 + 4) - label_w
+        if not compact[0] and avail < 140:
+            compact[0], compact[1] = True, w - avail + 140
+            for c in chips.values():
+                c.paint()
+            return refit()
+        if compact[0] and w >= compact[1]:
+            compact[0] = False
+            for c in chips.values():
+                c.paint()
+            return refit()
+        new = max(40, avail)
+        if new != dir_max[0]:
+            dir_max[0] = new
+            chips["dir"].paint()
+
+    def refit(_e=None):
+        if fit_job[0] is None:
+            fit_job[0] = root.after_idle(fit_chips)
+
+    chips_row.bind("<Configure>", refit)
 
     def chip(key, parts, icon=None, action=None, tip=None):
         c = tk.Canvas(chips_row, height=26, bg=BG, highlightthickness=0, bd=0)
@@ -1766,6 +1811,8 @@ def gui(initial=None):
         if tip:
             tooltip(c, tip)
         chips[key] = c
+        if key != "dir":
+            c.bind("<Configure>", refit, add="+")
         paint()
 
     def browse(_c=None):
@@ -1786,9 +1833,11 @@ def gui(initial=None):
             m.tk_popup(c.winfo_rootx(), c.winfo_rooty() + c.winfo_height() + 4)
         return run
 
-    chip("dir", lambda: [("Enregistrer dans  ", False), (dir_var.get(), True)], "folder", browse,
+    chip("dir", lambda: [("" if compact[0] else "Enregistrer dans  ", False),
+                        (elide(dir_var.get(), dir_max[0]), True)], "folder", browse,
          "Changer le dossier de destination")
-    chip("connections", lambda: [(conn_var.get(), True), ("  connexions par fichier", False)],
+    chip("connections", lambda: [(conn_var.get(), True),
+                                ("  connexions" if compact[0] else "  connexions par fichier", False)],
          action=choose(conn_var, (1, 2, 4, 8, 16, 24, 32), "connections"),
          tip="Connexions par fichier (liens directs)")
     chip("parallel", lambda: [(par_var.get(), True), ("  en même temps", False)],

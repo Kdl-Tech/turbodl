@@ -26,6 +26,10 @@
 - **Windows** : `TurboDL-1.9.1.exe` sur [kdl-tech.fr](https://kdl-tech.fr/logiciels/turbodl/).
 - **Linux (Debian, Ubuntu, Mint…)** : `turbodl_1.9.1_all.deb` sur [kdl-tech.fr](https://kdl-tech.fr/logiciels/turbodl/), puis `sudo apt install ./turbodl_1.9.1_all.deb` (installe aussi Python, Tk et libtorrent).
 
+### Nouveautés 1.9.2
+
+- La puce « Thème » reste toujours visible : le chemin de destination se raccourcit quand la fenêtre est étroite.
+
 ### Nouveautés 1.9.1
 
 - Nouvelle icône officielle KDL (A1 Acier) dans la fenêtre, l’en-tête et l’extension.
@@ -81,6 +85,10 @@ python -m PyInstaller --noconfirm --onefile --windowed --name TurboDL --icon tur
 ### Install
 - **Windows**: `TurboDL-1.9.1.exe` from [kdl-tech.fr](https://kdl-tech.fr/en/software/turbodl/).
 - **Linux (Debian, Ubuntu, Mint…)**: `turbodl_1.9.1_all.deb` from [kdl-tech.fr](https://kdl-tech.fr/en/software/turbodl/), then `sudo apt install ./turbodl_1.9.1_all.deb`.
+
+### What's new in 1.9.2
+
+- The « Theme » chip always stays visible: the download folder path is shortened when the window is narrow.
 
 ### What's new in 1.9.1
 
